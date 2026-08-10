@@ -16,13 +16,13 @@ constexpr ThemeMetrics values = [] {
   v.topPadding = 0;
   v.contentSidePadding = 22;
   v.homeTopPadding = 38;        // status bar band
-  v.homeCoverHeight = 130;      // thumbnail cache height, sized for the hero card
-  v.homeCoverTileHeight = 172;  // hero card + gap
+  v.homeCoverHeight = 260;      // thumbnail cache height, sized for the tall hero card
+  v.homeCoverTileHeight = 340;  // hero card + gap; fills the upper ~40% of the screen
   v.homeRecentBooksCount = 1;
   v.homeContinueReadingInMenu = true;
   v.homeMenuTopOffset = 16;
-  v.menuRowHeight = 62;
-  v.menuSpacing = 12;
+  v.menuRowHeight = 74;
+  v.menuSpacing = 16;
   v.buttonHintsHeight = ThemeShared::kFooterBandHeight;  // 26px visible + 10px padding below
   return v;
 }();

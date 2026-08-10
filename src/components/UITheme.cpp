@@ -11,12 +11,9 @@
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "components/themes/BaseTheme.h"
-#include "components/themes/compact/CompactTheme.h"
-#include "components/themes/framed/FramedTheme.h"
 #include "components/themes/gamemenu/GameMenuTheme.h"
 #include "components/themes/lyra/Lyra3CoversTheme.h"
 #include "components/themes/lyra/LyraTheme.h"
-#include "components/themes/newspaper/NewspaperTheme.h"
 #include "components/themes/roundedraff/RoundedRaffTheme.h"
 
 UITheme UITheme::instance;
@@ -53,25 +50,18 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       currentTheme = std::make_unique<Lyra3CoversTheme>();
       currentMetrics = &Lyra3CoversMetrics::values;
       break;
-    case CrossPointSettings::UI_THEME::COMPACT:
-      LOG_DBG("UI", "Using Compact theme");
-      currentTheme = std::make_unique<CompactTheme>();
-      currentMetrics = &CompactMetrics::values;
-      break;
-    case CrossPointSettings::UI_THEME::FRAMED:
-      LOG_DBG("UI", "Using Framed theme");
-      currentTheme = std::make_unique<FramedTheme>();
-      currentMetrics = &FramedMetrics::values;
-      break;
     case CrossPointSettings::UI_THEME::GAME_MENU:
       LOG_DBG("UI", "Using Game Menu theme");
       currentTheme = std::make_unique<GameMenuTheme>();
       currentMetrics = &GameMenuMetrics::values;
       break;
-    case CrossPointSettings::UI_THEME::NEWSPAPER:
-      LOG_DBG("UI", "Using Newspaper theme");
-      currentTheme = std::make_unique<NewspaperTheme>();
-      currentMetrics = &NewspaperMetrics::values;
+    default:
+      // A persisted uiTheme from a build with more themes would otherwise match no
+      // case, leaving currentTheme null -- getTheme() dereferences it and crashes on
+      // the first render. Fall back to Classic instead.
+      LOG_DBG("UI", "Unknown theme id, falling back to Classic");
+      currentTheme = std::make_unique<BaseTheme>();
+      currentMetrics = &BaseMetrics::values;
       break;
   }
   metricsValid = false;

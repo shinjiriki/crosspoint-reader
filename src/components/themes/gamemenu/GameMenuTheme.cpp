@@ -17,7 +17,15 @@
 namespace {
 constexpr int kCardRadius = 8;
 constexpr int kCardStroke = 2;
-constexpr int kHeroPadding = 14;
+constexpr int kHeroPadding = 18;
+
+// Gap left between the last menu card and the footer rule.
+constexpr int kMenuBottomGap = 14;
+
+// When false the hero follows the same rule as every other card: filled when
+// selected, outlined otherwise. Flip to true to keep it filled at all times so it
+// always reads as the hero.
+constexpr bool kHeroAlwaysFilled = false;
 constexpr int kHeroCoverGap = 16;
 constexpr int kTitleMaxLines = 2;
 }  // namespace
@@ -41,7 +49,7 @@ void GameMenuTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const 
     return;
   }
 
-  const bool selected = (selectorIndex == 0);
+  const bool selected = kHeroAlwaysFilled || (selectorIndex == 0);
 
   // The hero inverts on selection, so a restored snapshot is only reusable if the
   // selection state has not moved. Simplest correct thing: always repaint the hero.
@@ -69,10 +77,13 @@ void GameMenuTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const 
 
   const RecentBook& book = recentBooks[0];
 
-  const int coverH = cardH - kHeroPadding * 2;
+  // The card is now much taller than the cover, so size the cover from
+  // homeCoverHeight (which is also the thumbnail the SD cache holds) and centre it
+  // vertically rather than pinning it to the top padding.
+  const int coverH = std::min(m.homeCoverHeight, cardH - kHeroPadding * 2);
   int coverW = coverH * 2 / 3;
   const int coverX = cardX + kHeroPadding;
-  const int coverY = rect.y + kHeroPadding;
+  const int coverY = rect.y + (cardH - coverH) / 2;
 
   bool haveBitmap = false;
   if (!book.coverBmpPath.empty() && coverH > 0) {
@@ -154,21 +165,32 @@ void GameMenuTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonC
 
   const int cardX = rect.x + m.contentSidePadding;
   const int cardW = rect.width - m.contentSidePadding * 2;
-  if (cardW <= 0) {
+  const int cardCount = buttonCount - firstIndex;
+  if (cardW <= 0 || cardCount <= 0) {
     return;
   }
+
+  // Do NOT size the cards from rect.height. HomeActivity derives that from
+  // headerHeight + verticalSpacing (45 + 10), not from this theme's much larger
+  // homeCoverTileHeight, so it overstates the free space by a few hundred pixels.
+  // Measure down from the footer instead, and shrink the step if an OPDS row pushes
+  // the card count to five.
+  const int available = renderer.getScreenHeight() - m.buttonHintsHeight - rect.y - kMenuBottomGap;
+  const int preferredStep = m.menuRowHeight + m.menuSpacing;
+  const int step = std::min(preferredStep, available / cardCount);
+  const int cardH = std::max(1, step - m.menuSpacing);
 
   const int lineHeight = renderer.getLineHeight(UI_12_FONT_ID);
 
   for (int i = firstIndex; i < buttonCount; ++i) {
     const int slot = i - firstIndex;
-    const int cardY = rect.y + slot * (m.menuRowHeight + m.menuSpacing);
+    const int cardY = rect.y + slot * step;
     const bool selected = (i == selectedIndex);
 
     if (selected) {
-      renderer.fillRoundedRect(cardX, cardY, cardW, m.menuRowHeight, kCardRadius, Color::Black);
+      renderer.fillRoundedRect(cardX, cardY, cardW, cardH, kCardRadius, Color::Black);
     } else {
-      renderer.drawRoundedRect(cardX, cardY, cardW, m.menuRowHeight, kCardStroke, kCardRadius, true);
+      renderer.drawRoundedRect(cardX, cardY, cardW, cardH, kCardStroke, kCardRadius, true);
     }
 
     const int textWidth = cardW - kHeroPadding * 2;
@@ -178,8 +200,8 @@ void GameMenuTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonC
     const std::string label =
         renderer.truncatedText(UI_12_FONT_ID, buttonLabel(i).c_str(), textWidth, EpdFontFamily::BOLD);
     const int labelWidth = renderer.getTextWidth(UI_12_FONT_ID, label.c_str(), EpdFontFamily::BOLD);
-    renderer.drawText(UI_12_FONT_ID, cardX + (cardW - labelWidth) / 2, cardY + (m.menuRowHeight - lineHeight) / 2,
-                      label.c_str(), !selected, EpdFontFamily::BOLD);
+    renderer.drawText(UI_12_FONT_ID, cardX + (cardW - labelWidth) / 2, cardY + (cardH - lineHeight) / 2, label.c_str(),
+                      !selected, EpdFontFamily::BOLD);
   }
 }
 

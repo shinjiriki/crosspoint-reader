@@ -56,9 +56,8 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       currentMetrics = &GameMenuMetrics::values;
       break;
     default:
-      // A persisted uiTheme from a build with more themes would otherwise match no
-      // case, leaving currentTheme null -- getTheme() dereferences it and crashes on
-      // the first render. Fall back to Classic instead.
+      // A persisted uiTheme from another build would otherwise match no case, leaving
+      // currentTheme null -- getTheme() dereferences it and crashes on first render.
       LOG_DBG("UI", "Unknown theme id, falling back to Classic");
       currentTheme = std::make_unique<BaseTheme>();
       currentMetrics = &BaseMetrics::values;

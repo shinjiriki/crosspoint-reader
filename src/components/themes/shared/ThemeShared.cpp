@@ -3,6 +3,7 @@
 #include <EpdFontFamily.h>
 #include <GfxRenderer.h>
 #include <HalGPIO.h>
+#include <HalPowerManager.h>
 
 #include <string>
 
@@ -11,6 +12,34 @@
 #include "fontIds.h"
 
 namespace ThemeShared {
+
+namespace {
+
+// Upstream 1.6.0 removed BaseTheme::drawBatteryRight when the stock headers moved
+// onto the FreeInkUI component system. Nothing public replaced it, so the old
+// behaviour is reproduced here from the pieces BaseTheme still exposes:
+// drawBatteryOutline (static), fillBatteryIcon (virtual, so a theme overriding the
+// fill still gets its own) and batteryPercentSpacing.
+//
+// The +6 icon offset and the percentage sitting at the unshifted rect.y are
+// deliberate: that is exactly what the removed method did, and the status bar was
+// tuned against it on device. Do not "centre" it without looking at a photo first.
+void drawBatteryRightLocal(const BaseTheme& theme, const GfxRenderer& renderer, Rect rect, bool showPercentage) {
+  const uint16_t percentage = powerManager.getBatteryPercentage();
+  const int iconY = rect.y + 6;
+
+  if (showPercentage) {
+    const std::string percentageText = std::to_string(percentage) + "%";
+    const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, percentageText.c_str());
+    renderer.drawText(SMALL_FONT_ID, rect.x - textWidth - BaseTheme::batteryPercentSpacing, rect.y,
+                      percentageText.c_str());
+  }
+
+  BaseTheme::drawBatteryOutline(renderer, rect.x, iconY, rect.width, rect.height);
+  theme.fillBatteryIcon(renderer, Rect{rect.x, iconY, rect.width, rect.height}, percentage);
+}
+
+}  // namespace
 
 void drawFlatButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3, const char* btn4,
                          int bandHeight, int bottomPadding) {
@@ -30,10 +59,12 @@ void drawFlatButtonHints(GfxRenderer& renderer, const char* btn1, const char* bt
   const int visualHeight = bandHeight - bottomPadding;
 
   // Stock slot geometry -- X3 is 528px wide in portrait against the X4's 480.
+  // Keyed to the panel width the way upstream's drawButtonHints does, so boards
+  // other than the X3 that ship a 528-wide panel land on the same slots.
   constexpr int slotWidth = 106;
-  constexpr int x4Slots[] = {25, 130, 245, 350};
-  constexpr int x3Slots[] = {38, 154, 268, 384};
-  const int* slots = gpio.deviceIsX3() ? x3Slots : x4Slots;
+  constexpr int narrowSlots[] = {25, 130, 245, 350};
+  constexpr int wideSlots[] = {38, 154, 268, 384};
+  const int* slots = pageWidth >= 528 ? wideSlots : narrowSlots;
   const char* labels[] = {btn1, btn2, btn3, btn4};
 
   renderer.fillRect(0, bandY, pageWidth, bandHeight, false);
@@ -64,7 +95,7 @@ void drawTitleStatusBar(const BaseTheme& theme, const GfxRenderer& renderer, Rec
 
   const int batteryY = rect.y + (rect.height - batteryHeight) / 2;
   const int batteryX = rect.x + rect.width - sidePadding - batteryWidth;
-  theme.drawBatteryRight(renderer, Rect{batteryX, batteryY, batteryWidth, batteryHeight}, showPercent);
+  drawBatteryRightLocal(theme, renderer, Rect{batteryX, batteryY, batteryWidth, batteryHeight}, showPercent);
 
   if (title == nullptr || title[0] == '\0') {
     return;

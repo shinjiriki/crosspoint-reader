@@ -51,6 +51,11 @@ class Dictionary {
   // True when the .qidx sidecar (or the .sidx sidecar of a present .syn) is
   // missing or stale — call buildIndex() first so the UI can show an
   // "Indexing…" message for the slow first pass.
+
+  // True when the .ifo declares sametypesequence=h — definitions are HTML and
+  // the viewer may lay them out through the EPUB rendering pipeline.
+  bool definitionsAreHtml() const { return htmlDefinitions; }
+
   bool needsIndex();
 
   // Why an index build failed — the scan buffer is a heap allocation, so the
@@ -160,13 +165,13 @@ class Dictionary {
   // source entry is a NUL-terminated word followed by suffixBytes fixed bytes
   // (8 for .idx: offset+size; 4 for .syn: ordinal). magic tags the sidecar.
   // *outResult (if provided) reports why a failed pass failed.
-  bool buildSidecar(const std::string& sourcePath, const std::string& sidecarPath, uint32_t magic, uint32_t suffixBytes,
-                    void (*yieldFn)(void*), void* ctx, IndexResult* outResult);
+  static bool buildSidecar(const std::string& sourcePath, const std::string& sidecarPath, uint32_t magic,
+                           uint32_t suffixBytes, void (*yieldFn)(void*), void* ctx, IndexResult* outResult);
 
   // True when sidecarPath must be (re)built from sourcePath: missing/unreadable/
   // wrong-version sidecar, or a source-size mismatch. Shared by needsIndex() and
   // buildIndex() so each sidecar is rebuilt only when actually stale.
-  bool sidecarIsStale(const std::string& sourcePath, const std::string& sidecarPath, uint32_t magic);
+  static bool sidecarIsStale(const std::string& sourcePath, const std::string& sidecarPath, uint32_t magic);
 
   // Read the definition at location. On failure returns false and, if outResult
   // is given, sets it to the specific reason (Decompress / LowMemory / ReadError).
@@ -181,6 +186,7 @@ class Dictionary {
   std::string basePath;  // "/dictionaries/<folder>/<stem>", empty when not open
   bool hasPlainDict = false;
   bool hasSyn = false;  // a <stem>.syn synonym index exists next to the .idx
+  bool htmlDefinitions = false;
 
   // Shared scan buffer: lookups are single-threaded and this avoids a
   // 256-byte array on the stack of every locate() call.
